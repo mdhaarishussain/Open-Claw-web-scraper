@@ -1,0 +1,28 @@
+# Seed URLs for scraping luxury and antique items
+# Add target websites and their base URLs here
+
+sources:
+  # Luxury Watches
+  - name: "chrono24_luxury_watches"
+    base_url: "https://www.chrono24.com/search/index.htm?dosearch=true&maxAgeInDays=0&pageSize=60&priceFrom=1000&priceTo=&query=luxury&redirectToSearchIndex=true&resultview=block&sortorder=0"
+    category: "luxury_watches"
+    product_selector: "a.article-item-link"
+    next_page_selector: "a.pagination-next"
+
+  # Antique Furniture
+  - name: "1stdibs_antiques"
+    base_url: "https://www.1stdibs.com/furniture/"
+    category: "antique_furniture"
+    product_selector: "a[data-test='listing-link']"
+    next_page_selector: "a[aria-label='Next']"
+
+  # Fine Jewelry (example)
+  - name: "chrono24_jewelry"
+    base_url: "https://www.chrono24.com/jewelry/"
+    category: "fine_jewelry"
+    product_selector: "a.article-item-link"
+    next_page_selector: "a.pagination-next"
+
+# Note: These URLs are examples. You should update them with actual working URLs
+# that point to appropriate listing pages. Verify robots.txt compliance before scraping.
+# Consider starting with fewer sources for testing purposes.
