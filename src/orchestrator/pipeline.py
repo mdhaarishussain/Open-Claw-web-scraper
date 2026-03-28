@@ -4,6 +4,7 @@ Coordinates scraping, extraction, validation, and storage in a self-running loop
 """
 import logging
 import time
+from datetime import datetime
 from typing import List, Optional, Dict
 
 from src.scraper.stealthy_fetcher import StealthyFetcher

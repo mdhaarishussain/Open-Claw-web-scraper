@@ -21,15 +21,20 @@ class Settings:
     DATA_DIR = PROJECT_ROOT / "data"
     LOGS_DIR = PROJECT_ROOT / "logs"
     CHECKPOINT_DIR = DATA_DIR / "checkpoints"
+    CRAWL_DIR = DATA_DIR / "crawl_data"
     PROMPTS_DIR = PROJECT_ROOT / "prompts"
     TESTS_DIR = PROJECT_ROOT / "tests"
 
-    # Database Configuration
-    DATABASE_PATH = os.getenv("DATABASE_PATH", str(DATA_DIR / "heartisans.db"))
+    # Storage Configuration
+    DATABASE_PATH = os.getenv("DATABASE_PATH", str(DATA_DIR / "heartisans.db"))  # SQLite (kept for querying)
+    CSV_PATH = os.getenv("CSV_PATH", str(DATA_DIR / "heartisans.csv"))  # Primary human-readable output
+
+    # Currency
+    CURRENCY = os.getenv("CURRENCY", "INR")  # All prices normalized to INR
 
     # LLM Configuration
-    LLM_PROVIDER = os.getenv("LLM_PROVIDER", "cerebras")  # ollama, openai, anthropic, or cerebras
-    LLM_FALLBACK = os.getenv("LLM_FALLBACK", None)  # Optional fallback provider
+    LLM_PROVIDER = os.getenv("LLM_PROVIDER", "cerebras")
+    LLM_FALLBACK = os.getenv("LLM_FALLBACK", None)
 
     # Ollama Settings
     OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3")
@@ -45,18 +50,24 @@ class Settings:
 
     # Cerebras Settings (Fast inference with Llama models)
     CEREBRAS_API_KEY = os.getenv("CEREBRAS_API_KEY")
-    CEREBRAS_MODEL = os.getenv("CEREBRAS_MODEL", "llama3.3-70b")
+    CEREBRAS_MODEL = os.getenv("CEREBRAS_MODEL", "gpt-oss-120b")
 
     # Scraping Configuration
     MIN_DELAY = float(os.getenv("MIN_DELAY_SECONDS", "2"))
     MAX_DELAY = float(os.getenv("MAX_DELAY_SECONDS", "7"))
     REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "30"))
     MAX_RETRIES = int(os.getenv("MAX_RETRIES", "3"))
-    USER_AGENT = os.getenv("USER_AGENT", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+    USER_AGENT = os.getenv(
+        "USER_AGENT",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    )
+
+    # Concurrency (Spider framework)
+    CONCURRENT_REQUESTS = int(os.getenv("CONCURRENT_REQUESTS", "5"))
 
     # Circuit Breaker Configuration
     CIRCUIT_BREAKER_THRESHOLD = int(os.getenv("CIRCUIT_BREAKER_THRESHOLD", "5"))
-    CIRCUIT_BREAKER_TIMEOUT = int(os.getenv("CIRCUIT_BREAKER_TIMEOUT", "300"))  # 5 minutes
+    CIRCUIT_BREAKER_TIMEOUT = int(os.getenv("CIRCUIT_BREAKER_TIMEOUT", "300"))
 
     # Pipeline Configuration
     TARGET_ROW_COUNT = int(os.getenv("TARGET_ROW_COUNT", "10000"))
@@ -71,6 +82,7 @@ class Settings:
         cls.DATA_DIR.mkdir(exist_ok=True)
         cls.LOGS_DIR.mkdir(exist_ok=True)
         cls.CHECKPOINT_DIR.mkdir(exist_ok=True)
+        cls.CRAWL_DIR.mkdir(exist_ok=True)
 
     @classmethod
     def load_seed_urls(cls):
@@ -130,9 +142,11 @@ class Settings:
             errors.append(f"TARGET_ROW_COUNT must be positive, got: {cls.TARGET_ROW_COUNT}")
         if cls.CHECKPOINT_INTERVAL <= 0:
             errors.append(f"CHECKPOINT_INTERVAL must be positive, got: {cls.CHECKPOINT_INTERVAL}")
+        if cls.CONCURRENT_REQUESTS <= 0:
+            errors.append(f"CONCURRENT_REQUESTS must be positive, got: {cls.CONCURRENT_REQUESTS}")
 
         if errors:
-            raise ValueError(f"Configuration validation failed:\n" + "\n".join(f"  - {e}" for e in errors))
+            raise ValueError("Configuration validation failed:\n" + "\n".join(f"  - {e}" for e in errors))
 
         return True
 

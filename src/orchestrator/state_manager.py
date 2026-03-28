@@ -1,13 +1,12 @@
 """
 State manager for tracking pipeline progress and enabling resumption.
-Saves checkpoints periodically to allow recovery from interruptions.
+Uses JSON serialization for safe, portable checkpoints (replaces pickle).
 """
 import json
-import pickle
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Set, List, Optional
+from typing import Dict, Set, Optional
 
 from config.settings import settings
 
@@ -17,6 +16,7 @@ logger = logging.getLogger(__name__)
 class StateManager:
     """
     Manages pipeline state including progress tracking and checkpointing.
+    Uses JSON for checkpoint persistence (safe, human-readable, no arbitrary code execution risk).
     """
 
     def __init__(self, checkpoint_dir: Optional[Path] = None):
@@ -41,10 +41,10 @@ class StateManager:
             'extraction_times': [],
             'failures_by_type': {},
             'successes': 0,
-            'total_attempts': 0
+            'total_attempts': 0,
         }
 
-        self.checkpoint_path = self.checkpoint_dir / "pipeline_state.pkl"
+        self.checkpoint_path = self.checkpoint_dir / "pipeline_state.json"
         logger.info(f"StateManager initialized (checkpoint: {self.checkpoint_path})")
 
     def increment_row_count(self):
@@ -61,7 +61,12 @@ class StateManager:
         """Mark a URL as processed"""
         self.urls_processed.add(url)
 
-    def record_success(self, url: str, scrape_time: Optional[float] = None, extraction_time: Optional[float] = None):
+    def record_success(
+        self,
+        url: str,
+        scrape_time: Optional[float] = None,
+        extraction_time: Optional[float] = None,
+    ):
         """
         Record a successful processing operation.
 
@@ -92,26 +97,31 @@ class StateManager:
         self.mark_processed(url)  # Don't retry in this run
         self.metrics['total_attempts'] += 1
 
-        # Track failures by type
         self.metrics['failures_by_type'][failure_type] = \
             self.metrics['failures_by_type'].get(failure_type, 0) + 1
 
         logger.warning(f"Recorded failure for {url[:50]}... (type: {failure_type})")
 
     def save_checkpoint(self):
-        """Save current state to disk for resumption"""
+        """Save current state to disk as JSON for safe resumption"""
         try:
             state_data = {
                 'row_count': self.row_count,
                 'urls_processed': list(self.urls_processed),
                 'urls_failed': self.urls_failed,
-                'start_time': self.start_time,
-                'metrics': self.metrics,
-                'checkpoint_time': datetime.now()
+                'start_time': self.start_time.isoformat(),
+                'metrics': {
+                    'scrape_times': self.metrics['scrape_times'],
+                    'extraction_times': self.metrics['extraction_times'],
+                    'failures_by_type': self.metrics['failures_by_type'],
+                    'successes': self.metrics['successes'],
+                    'total_attempts': self.metrics['total_attempts'],
+                },
+                'checkpoint_time': datetime.now().isoformat(),
             }
 
-            with open(self.checkpoint_path, 'wb') as f:
-                pickle.dump(state_data, f)
+            with open(self.checkpoint_path, 'w', encoding='utf-8') as f:
+                json.dump(state_data, f, indent=2, ensure_ascii=False)
 
             logger.info(
                 f"Checkpoint saved: {self.row_count} rows, "
@@ -133,13 +143,13 @@ class StateManager:
             return False
 
         try:
-            with open(self.checkpoint_path, 'rb') as f:
-                state_data = pickle.load(f)
+            with open(self.checkpoint_path, 'r', encoding='utf-8') as f:
+                state_data = json.load(f)
 
             self.row_count = state_data['row_count']
             self.urls_processed = set(state_data['urls_processed'])
             self.urls_failed = state_data['urls_failed']
-            self.start_time = state_data['start_time']
+            self.start_time = datetime.fromisoformat(state_data['start_time'])
             self.metrics = state_data['metrics']
 
             checkpoint_time = state_data.get('checkpoint_time', 'unknown')
@@ -194,7 +204,7 @@ class StateManager:
             'avg_scrape_time': round(avg_scrape_time, 2),
             'avg_extraction_time': round(avg_extraction_time, 2),
             'total_runtime': str(runtime),
-            'runtime_seconds': runtime.total_seconds()
+            'runtime_seconds': runtime.total_seconds(),
         }
 
     def print_report(self):

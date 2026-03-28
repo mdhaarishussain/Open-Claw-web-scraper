@@ -1,11 +1,12 @@
 """
 URL navigator for pagination and product link extraction.
-Handles different pagination patterns and link discovery.
+Uses Scrapling's built-in parser instead of BeautifulSoup for consistency and performance.
 """
 import logging
 from typing import List, Optional, Set
 from urllib.parse import urljoin, urlparse
-from bs4 import BeautifulSoup
+
+from scrapling.parser import Selector
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +14,7 @@ logger = logging.getLogger(__name__)
 class URLNavigator:
     """
     Handles URL navigation, pagination, and product link extraction.
+    Uses Scrapling's Selector for HTML parsing — no BeautifulSoup dependency.
     """
 
     def __init__(self):
@@ -24,45 +26,51 @@ class URLNavigator:
         self,
         html_content: str,
         base_url: str,
-        selector: Optional[str] = None
+        selector: Optional[str] = None,
+        *,
+        page=None,
     ) -> List[str]:
         """
         Extract product links from a category/listing page.
 
         Args:
-            html_content: HTML content of the page
+            html_content: HTML content of the page (used if page is None)
             base_url: Base URL for resolving relative links
             selector: CSS selector for product links (optional)
+            page: Optional Scrapling Adaptor/Response object (preferred over raw HTML)
 
         Returns:
             List of product URLs
         """
-        soup = BeautifulSoup(html_content, 'lxml')
-        links = []
+        # Use Scrapling Adaptor if provided, otherwise parse raw HTML
+        if page is not None:
+            doc = page
+        else:
+            doc = Selector(html_content)
+
+        links: list[str] = []
 
         try:
-            # Use provided selector if available
             if selector:
-                elements = soup.select(selector)
+                elements = doc.css(selector)
                 for element in elements:
-                    href = element.get('href')
+                    href = element.attrib.get('href')
                     if href:
                         absolute_url = urljoin(base_url, href)
                         links.append(absolute_url)
             else:
-                # Fallback: find all links
-                for link in soup.find_all('a', href=True):
-                    href = link['href']
-                    absolute_url = urljoin(base_url, href)
-
-                    # Basic heuristic: skip navigation, filters, etc.
-                    if self._looks_like_product_url(absolute_url):
-                        links.append(absolute_url)
+                # Fallback: find all <a> tags
+                for link in doc.css('a[href]'):
+                    href = link.attrib.get('href', '')
+                    if href:
+                        absolute_url = urljoin(base_url, href)
+                        if self._looks_like_product_url(absolute_url):
+                            links.append(absolute_url)
 
             # Remove duplicates while preserving order
             links = list(dict.fromkeys(links))
 
-            # Filter out already visited URLs
+            # Filter out already-visited URLs
             new_links = [url for url in links if url not in self.visited_urls]
 
             logger.info(
@@ -80,47 +88,61 @@ class URLNavigator:
         self,
         html_content: str,
         current_url: str,
-        selector: Optional[str] = None
+        selector: Optional[str] = None,
+        *,
+        page=None,
     ) -> Optional[str]:
         """
         Find the "Next Page" pagination link.
 
         Args:
-            html_content: HTML content of current page
+            html_content: HTML content of current page (used if page is None)
             current_url: Current page URL
             selector: CSS selector for next page link (optional)
+            page: Optional Scrapling Adaptor/Response object
 
         Returns:
             URL of next page, or None if not found
         """
-        soup = BeautifulSoup(html_content, 'lxml')
+        if page is not None:
+            doc = page
+        else:
+            doc = Selector(html_content)
 
         try:
             next_link = None
 
             # Try provided selector first
             if selector:
-                element = soup.select_one(selector)
-                if element:
-                    next_link = element.get('href')
+                elements = doc.css(selector)
+                if elements:
+                    next_link = elements[0].attrib.get('href')
 
-            # Fallback: common patterns for next page
+            # Fallback: common pagination patterns
             if not next_link:
-                # Look for common next page indicators
-                patterns = [
-                    {'name': 'a', 'string': 'Next'},
-                    {'name': 'a', 'string': 'next'},
-                    {'name': 'a', 'class_': 'next'},
-                    {'name': 'a', 'class_': 'pagination-next'},
-                    {'name': 'a', 'attrs': {'aria-label': 'Next'}},
-                    {'name': 'a', 'attrs': {'rel': 'next'}},
+                css_patterns = [
+                    'a.next',
+                    'a.pagination-next',
+                    'a[aria-label="Next"]',
+                    'a[rel="next"]',
+                    'li.next > a',
+                    '.pagination a.next',
                 ]
+                for pattern in css_patterns:
+                    elements = doc.css(pattern)
+                    if elements:
+                        next_link = elements[0].attrib.get('href')
+                        if next_link:
+                            break
 
-                for pattern in patterns:
-                    element = soup.find(**pattern)
-                    if element and element.get('href'):
-                        next_link = element['href']
-                        break
+            # Text-based fallback
+            if not next_link:
+                for a_tag in doc.css('a'):
+                    text = (a_tag.text or '').strip().lower()
+                    if text in ('next', 'next ›', 'next »', '>', '»', '→'):
+                        next_link = a_tag.attrib.get('href')
+                        if next_link:
+                            break
 
             if next_link:
                 absolute_url = urljoin(current_url, next_link)
@@ -137,32 +159,24 @@ class URLNavigator:
     def _looks_like_product_url(self, url: str) -> bool:
         """
         Heuristic to determine if a URL likely points to a product page.
-
-        Args:
-            url: URL to check
-
-        Returns:
-            True if URL looks like a product page
         """
         url_lower = url.lower()
 
-        # Exclude common non-product pages
         exclude_patterns = [
             '/search', '/category', '/categories', '/filter',
             '/sort', '/login', '/register', '/account', '/cart',
             '/checkout', '/about', '/contact', '/help', '/faq',
             '/terms', '/privacy', '/sitemap', '#', 'javascript:',
-            'mailto:', '.pdf', '.jpg', '.png', '.gif'
+            'mailto:', '.pdf', '.jpg', '.png', '.gif',
         ]
 
         for pattern in exclude_patterns:
             if pattern in url_lower:
                 return False
 
-        # Include common product page patterns
         include_patterns = [
             '/product/', '/item/', '/p/', '/watch/', '/furniture/',
-            '/jewelry/', '/listing/', '/detail/'
+            '/jewelry/', '/listing/', '/detail/',
         ]
 
         for pattern in include_patterns:

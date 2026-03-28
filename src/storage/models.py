@@ -1,12 +1,16 @@
 """
 SQLAlchemy ORM models for storing product data in SQLite database.
 Maps the 15 Pydantic features to database columns.
+All prices stored in INR (Indian Rupees).
 """
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, Text
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    """Modern SQLAlchemy declarative base (replaces deprecated declarative_base())."""
+    pass
 
 
 class Product(Base):
@@ -49,11 +53,11 @@ class Product(Base):
     # 8. Colour
     colour = Column(String(100), nullable=False)
 
-    # 9. Current market price (CRITICAL - target variable for ML)
+    # 9. Current market price in INR (CRITICAL — target variable for ML)
     current_market_price = Column(Float, nullable=False, index=True)
 
     # 10. Seller reputation
-    seller_reputation = Column(Float, nullable=True)
+    seller_reputation = Column(String(255), nullable=True)
 
     # 11. Dimensions
     dimensions = Column(String(255), nullable=True)
@@ -72,9 +76,12 @@ class Product(Base):
 
     def __repr__(self) -> str:
         """String representation for debugging"""
-        return (f"<Product(id={self.id}, brand={self.brand}, "
-                f"price=${self.current_market_price:,.2f}, "
-                f"origin={self.origin})>")
+        price_out = f"₹{self.current_market_price:,.2f}" if self.current_market_price else "N/A"
+        return (
+            f"<Product(id={self.id}, brand={self.brand}, "
+            f"price={price_out}, "
+            f"origin={self.origin})>"
+        )
 
     def to_dict(self) -> dict:
         """Convert model to dictionary for serialization"""
@@ -97,5 +104,5 @@ class Product(Base):
             'weight': self.weight,
             'work_type': self.work_type,
             'brand': self.brand,
-            'limited_edition': self.limited_edition
+            'limited_edition': self.limited_edition,
         }

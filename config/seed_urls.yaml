@@ -1,28 +1,313 @@
-# Seed URLs for scraping luxury and antique items
-# Add target websites and their base URLs here
+# ==============================================================================
+# Heartisans Autonomous Data Pipeline - Seed URL Configuration
+# ==============================================================================
+# priority: lower number = tried first. Sites are sorted by priority at runtime.
+# The spider selects only ceil(target_rows*2/15)+1 seeds — so priority matters.
+#
+# Tier 1 (priority 10): Confirmed working, high link yield
+# Tier 2 (priority 20): Working but lower yield or partial matches
+# Tier 3 (priority 30): International luxury — may need browser rendering
+# Tier 4 (priority 50): Unreliable / blocks HTTP scrapers
+# disabled: Sites that are dead or consistently timeout
+# ==============================================================================
 
 sources:
-  # Luxury Watches
-  - name: "chrono24_luxury_watches"
-    base_url: "https://www.chrono24.com/search/index.htm?dosearch=true&maxAgeInDays=0&pageSize=60&priceFrom=1000&priceTo=&query=luxury&redirectToSearchIndex=true&resultview=block&sortorder=0"
-    category: "luxury_watches"
-    product_selector: "a.article-item-link"
-    next_page_selector: "a.pagination-next"
 
-  # Antique Furniture
-  - name: "1stdibs_antiques"
+  # ============================================================================
+  # TIER 1 — CONFIRMED WORKING WITH HTTP FETCHER (priority 10)
+  # ============================================================================
+
+  # NOVICA — 170+ links per page, fallback /p/ selector works perfectly
+  - name: "novica_jewelry"
+    base_url: "https://www.novica.com/jewelry/"
+    category: "artisan_jewelry"
+    product_selector: "a[href*='/p/']"
+    next_page_selector: "a.next"
+    priority: 10
+    enabled: true
+
+  - name: "novica_home_decor"
+    base_url: "https://www.novica.com/home-decor/"
+    category: "artisan_home_decor"
+    product_selector: "a[href*='/p/']"
+    next_page_selector: "a.next"
+    priority: 10
+    enabled: true
+
+  - name: "novica_paintings"
+    base_url: "https://www.novica.com/paintings/"
+    category: "artisan_paintings"
+    product_selector: "a[href*='/p/']"
+    next_page_selector: "a.next"
+    priority: 10
+    enabled: true
+
+  # iTokri — Indian handicrafts, 180+ links, Shopify /products/ structure
+  - name: "itokri_crafts"
+    base_url: "https://www.itokri.com/collections/all"
+    category: "indian_handicrafts"
+    product_selector: "a[href*='/products/']"
+    next_page_selector: "a[rel='next']"
+    priority: 10
+    enabled: true
+
+  # The India Craft House — 60+ authentic artisan links
+  - name: "indiacrafthouse_crafts"
+    base_url: "https://theindiacrafthouse.com/collections/all"
+    category: "indian_artisan_crafts"
+    product_selector: "a[href*='/products/']"
+    next_page_selector: "a[rel='next']"
+    priority: 10
+    enabled: true
+
+  # TheRealReal — luxury consignment, 100+ product links per page
+  - name: "therealreal_jewelry"
+    base_url: "https://www.therealreal.com/shop/jewelry"
+    category: "luxury_jewelry"
+    product_selector: "a[href*='/products/']"
+    next_page_selector: "a[rel='next']"
+    priority: 10
+    enabled: true
+
+  - name: "therealreal_art"
+    base_url: "https://www.therealreal.com/shop/art"
+    category: "luxury_art"
+    product_selector: "a[href*='/products/']"
+    next_page_selector: "a[rel='next']"
+    priority: 10
+    enabled: true
+
+  # ============================================================================
+  # TIER 2 — WORKING WITH FALLBACK SELECTORS (priority 20)
+  # ============================================================================
+
+  # 1stDibs — works, 20+ links, uses /id-f_ selectors
+  - name: "1stdibs_furniture"
     base_url: "https://www.1stdibs.com/furniture/"
     category: "antique_furniture"
-    product_selector: "a[data-test='listing-link']"
-    next_page_selector: "a[aria-label='Next']"
+    product_selector: "a[href*='/furniture/']"
+    next_page_selector: "a[data-tn='pagination-next']"
+    priority: 20
+    enabled: true
 
-  # Fine Jewelry (example)
-  - name: "chrono24_jewelry"
-    base_url: "https://www.chrono24.com/jewelry/"
-    category: "fine_jewelry"
-    product_selector: "a.article-item-link"
-    next_page_selector: "a.pagination-next"
+  - name: "1stdibs_jewelry"
+    base_url: "https://www.1stdibs.com/jewelry/"
+    category: "luxury_jewelry"
+    product_selector: "a[href*='/jewelry/']"
+    next_page_selector: "a[data-tn='pagination-next']"
+    priority: 20
+    enabled: true
 
-# Note: These URLs are examples. You should update them with actual working URLs
-# that point to appropriate listing pages. Verify robots.txt compliance before scraping.
-# Consider starting with fewer sources for testing purposes.
+  - name: "1stdibs_art"
+    base_url: "https://www.1stdibs.com/art/"
+    category: "fine_art"
+    product_selector: "a[href*='/art/']"
+    next_page_selector: "a[data-tn='pagination-next']"
+    priority: 20
+    enabled: true
+
+  # Pamono — fallback /product selector works, 5+ links
+  - name: "pamono_furniture"
+    base_url: "https://www.pamono.com/furniture"
+    category: "designer_furniture"
+    product_selector: "a[href*='/product']"
+    next_page_selector: "a[rel='next']"
+    priority: 20
+    enabled: true
+
+  # ExclusiveLane — 2+ links with fallback
+  - name: "exclusivelane_decor"
+    base_url: "https://exclusivelane.com/home-decor"
+    category: "indian_home_decor"
+    product_selector: "a[href*='/product']"
+    next_page_selector: "a.next"
+    priority: 20
+    enabled: true
+
+  # WoodenStreet — 22+ links with fallback /product selector
+  - name: "woodenstreet_furniture"
+    base_url: "https://www.woodenstreet.com/solid-wood-furniture"
+    category: "indian_furniture"
+    product_selector: "a[href*='/product']"
+    next_page_selector: "a.next"
+    priority: 20
+    enabled: true
+
+  # ============================================================================
+  # TIER 3 — INTERNATIONAL LUXURY, NEEDS TESTING (priority 30)
+  # ============================================================================
+
+  # Catawiki — returns 404 on category but fallback /p/ yields 6 links
+  - name: "catawiki_antiques"
+    base_url: "https://www.catawiki.com/en/l/antiques"
+    category: "auction_antiques"
+    product_selector: "a[href*='/lot/']"
+    next_page_selector: "a[rel='next']"
+    priority: 30
+    enabled: true
+
+  - name: "catawiki_jewelry"
+    base_url: "https://www.catawiki.com/en/l/jewellery"
+    category: "auction_jewelry"
+    product_selector: "a[href*='/lot/']"
+    next_page_selector: "a[rel='next']"
+    priority: 30
+    enabled: true
+
+  # Jaypore — returning 404 but partial match via fallback
+  - name: "jaypore_jewelry"
+    base_url: "https://www.jaypore.com/jewellery"
+    category: "indian_jewelry"
+    product_selector: "a[href*='/product/']"
+    next_page_selector: "a.next"
+    priority: 30
+    enabled: true
+
+  - name: "jaypore_home"
+    base_url: "https://www.jaypore.com/home-and-living"
+    category: "indian_home_decor"
+    product_selector: "a[href*='/product/']"
+    next_page_selector: "a.next"
+    priority: 30
+    enabled: true
+
+  # Pepperfry — 1 link via fallback, may improve
+  - name: "pepperfry_furniture"
+    base_url: "https://www.pepperfry.com/furniture.html"
+    category: "indian_furniture"
+    product_selector: "a[href*='/product/']"
+    next_page_selector: "a[rel='next']"
+    priority: 30
+    enabled: true
+
+  # Chrono24 — selector issue, needs fixing
+  - name: "chrono24_watches"
+    base_url: "https://www.chrono24.com/search/index.htm?dosearch=true&query=luxury+watch&pageSize=60&priceFrom=1000"
+    category: "luxury_watches"
+    product_selector: "a[href*='/id']"
+    next_page_selector: "a[rel='next']"
+    priority: 30
+    enabled: true
+
+  # ============================================================================
+  # TIER 4 — UNRELIABLE / BLOCKS HTTP (priority 50, disabled by default)
+  # ============================================================================
+
+  # Etsy — aggressively blocks non-browser scrapers (returns 403)
+  - name: "etsy_handmade_jewelry"
+    base_url: "https://www.etsy.com/search?q=handmade+jewelry&min=25&max=500"
+    category: "handmade_jewelry"
+    product_selector: "a[href*='/listing/']"
+    next_page_selector: "a[data-page-number]"
+    priority: 50
+    enabled: false
+
+  - name: "etsy_vintage_art"
+    base_url: "https://www.etsy.com/search?q=vintage+art+antique&min=50&max=1000"
+    category: "vintage_art"
+    product_selector: "a[href*='/listing/']"
+    next_page_selector: "a[data-page-number]"
+    priority: 50
+    enabled: false
+
+  - name: "etsy_handcrafted_furniture"
+    base_url: "https://www.etsy.com/search?q=handcrafted+wooden+furniture&min=100&max=2000"
+    category: "handcrafted_furniture"
+    product_selector: "a[href*='/listing/']"
+    next_page_selector: "a[data-page-number]"
+    priority: 50
+    enabled: false
+
+  - name: "etsy_ceramics_pottery"
+    base_url: "https://www.etsy.com/search?q=handmade+ceramics+pottery&min=15&max=300"
+    category: "ceramics_pottery"
+    product_selector: "a[href*='/listing/']"
+    next_page_selector: "a[data-page-number]"
+    priority: 50
+    enabled: false
+
+  - name: "etsy_textiles"
+    base_url: "https://www.etsy.com/search?q=handwoven+textile+craft&min=20&max=500"
+    category: "handmade_textiles"
+    product_selector: "a[href*='/listing/']"
+    next_page_selector: "a[data-page-number]"
+    priority: 50
+    enabled: false
+
+  - name: "etsy_collectibles"
+    base_url: "https://www.etsy.com/search?q=limited+edition+collectible&min=30&max=800"
+    category: "collectibles"
+    product_selector: "a[href*='/listing/']"
+    next_page_selector: "a[data-page-number]"
+    priority: 50
+    enabled: false
+
+  # Ruby Lane — consistently times out (30s+), disabled
+  - name: "rubylane_antiques"
+    base_url: "https://www.rubylane.com/search?q=antique&sort=newest"
+    category: "antiques"
+    product_selector: "a[href*='/item/']"
+    next_page_selector: "a.next"
+    priority: 50
+    enabled: false
+
+  # Chairish — times out on HTTP, needs browser
+  - name: "chairish_furniture"
+    base_url: "https://www.chairish.com/shop/furniture"
+    category: "vintage_furniture"
+    product_selector: "a[href*='/product/']"
+    next_page_selector: "a[rel='next']"
+    priority: 50
+    enabled: false
+
+  - name: "chairish_art"
+    base_url: "https://www.chairish.com/shop/art"
+    category: "vintage_art"
+    product_selector: "a[href*='/product/']"
+    next_page_selector: "a[rel='next']"
+    priority: 50
+    enabled: false
+
+  # Saatchi Art — yields 0 links, selector broken
+  - name: "saatchi_paintings"
+    base_url: "https://www.saatchiart.com/paintings"
+    category: "original_paintings"
+    product_selector: "a[href*='/art/']"
+    next_page_selector: "a[rel='next']"
+    priority: 50
+    enabled: false
+
+  - name: "saatchi_sculpture"
+    base_url: "https://www.saatchiart.com/sculpture"
+    category: "original_sculpture"
+    product_selector: "a[href*='/art/']"
+    next_page_selector: "a[rel='next']"
+    priority: 50
+    enabled: false
+
+  # eCraftIndia — .html selector yields 0
+  - name: "ecraftindia_crafts"
+    base_url: "https://www.ecraftindia.com/handicrafts.html"
+    category: "indian_handicrafts"
+    product_selector: "a[href*='.html']"
+    next_page_selector: "a.next"
+    priority: 50
+    enabled: false
+
+  # Craftsvilla — domain does not resolve
+  - name: "craftsvilla_crafts"
+    base_url: "https://www.craftsvilla.com/home-decor"
+    category: "indian_crafts"
+    product_selector: "a[href*='/product/']"
+    next_page_selector: "a.next"
+    priority: 50
+    enabled: false
+
+# ==============================================================================
+# SUMMARY
+# Active sources: 17 (Tier 1-3) | Disabled: 13 (Etsy, Rubylane, Chairish etc.)
+# Tier 1 (7 sources): novica x3, itokri, indiacrafthouse, therealreal x2
+# Tier 2 (6 sources): 1stdibs x3, pamono, exclusivelane, woodenstreet
+# Tier 3 (5 sources): catawiki x2, jaypore x2, pepperfry, chrono24
+# Price range: INR 200 - INR 5Cr+
+# ==============================================================================

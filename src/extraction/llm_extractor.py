@@ -67,9 +67,10 @@ class LLMExtractor:
             # Parse and validate with Pydantic
             product_data = ProductData.model_validate(result_json)
 
+            price_out = f"₹{product_data.current_market_price:,.2f}" if product_data.current_market_price else "N/A"
             logger.info(
                 f"Successfully extracted data: "
-                f"price=${product_data.current_market_price:,.2f}, "
+                f"price={price_out}, "
                 f"brand={product_data.brand or 'N/A'}"
             )
 
@@ -207,16 +208,29 @@ class CerebrasExtractor:
     def extract_json(self, system_prompt: str, content: str) -> Dict[str, Any]:
         """Extract JSON from content using Cerebras"""
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"Extract product data from:\n\n{content[:10000]}"}  # Cerebras can handle longer context
-                ],
-                temperature=0.1,  # Low temperature for consistent extraction
-                max_tokens=2048,
-                response_format={"type": "json_object"}  # Request JSON format if supported
-            )
+            # Try with json_object format first (not all models support it)
+            try:
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": f"Extract product data from:\n\n{content[:10000]}"}
+                    ],
+                    temperature=0.1,
+                    max_tokens=2048,
+                    response_format={"type": "json_object"}
+                )
+            except Exception:
+                # Fallback: no response_format constraint
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[
+                        {"role": "system", "content": system_prompt + "\n\nYou MUST respond with valid JSON only. No markdown, no explanation."},
+                        {"role": "user", "content": f"Extract product data from:\n\n{content[:10000]}"}
+                    ],
+                    temperature=0.1,
+                    max_tokens=2048,
+                )
 
             json_str = response.choices[0].message.content
 
