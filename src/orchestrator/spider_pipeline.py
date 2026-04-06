@@ -566,14 +566,6 @@ def run_spider_pipeline():
         spider.database.export_to_csv(str(export_path))
         logger.info(f"Dataset exported to: {export_path}")
 
-        # Export Spider items to JSON
-        items_path = (
-            settings.DATA_DIR
-            / f"heartisans_items_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-        )
-        result.items.to_json(str(items_path))
-        logger.info(f"Spider items exported to: {items_path}")
-
     # Print report
     spider.print_report()
 

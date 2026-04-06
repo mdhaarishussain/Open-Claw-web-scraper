@@ -128,7 +128,7 @@ class Validator:
         max_score += 10
         if product_data.defects or product_data.expensive_material or product_data.valuable_gem:
             score += 5
-        if len(product_data.material_used) > 10:
+        if product_data.material_used and len(product_data.material_used) > 10:
             score += 5
 
         # Work type is not "Unknown"

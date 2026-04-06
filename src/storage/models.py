@@ -30,7 +30,7 @@ class Product(Base):
 
     # The 15 required features
     # 1. Material used
-    material_used = Column(String(255), nullable=False)
+    material_used = Column(String(255), nullable=True)
 
     # 2. Valuable gem
     valuable_gem = Column(String(255), nullable=True)
@@ -39,22 +39,22 @@ class Product(Base):
     expensive_material = Column(String(255), nullable=True)
 
     # 4. Origin
-    origin = Column(String(255), nullable=False)
+    origin = Column(String(255), nullable=True)
 
     # 5. Date of manufacture
-    date_of_manufacture = Column(String(255), nullable=False)
+    date_of_manufacture = Column(String(255), nullable=True)
 
     # 6. Defects
     defects = Column(Text, nullable=True)
 
     # 7. Scratches
-    scratches = Column(Boolean, nullable=False)
+    scratches = Column(Boolean, nullable=True)
 
     # 8. Colour
-    colour = Column(String(100), nullable=False)
+    colour = Column(String(100), nullable=True)
 
     # 9. Current market price in INR (CRITICAL — target variable for ML)
-    current_market_price = Column(Float, nullable=False, index=True)
+    current_market_price = Column(Float, nullable=True, index=True)
 
     # 10. Seller reputation
     seller_reputation = Column(String(255), nullable=True)
@@ -66,13 +66,13 @@ class Product(Base):
     weight = Column(String(100), nullable=True)
 
     # 13. Work type
-    work_type = Column(String(50), nullable=False)
+    work_type = Column(String(50), nullable=True)
 
     # 14. Brand
     brand = Column(String(255), nullable=True, index=True)
 
     # 15. Limited edition
-    limited_edition = Column(Boolean, nullable=False, default=False)
+    limited_edition = Column(Boolean, nullable=True, default=False)
 
     def __repr__(self) -> str:
         """String representation for debugging"""

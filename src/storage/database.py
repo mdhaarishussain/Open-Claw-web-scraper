@@ -125,7 +125,7 @@ class Database:
                 seller_reputation=product_data.seller_reputation,
                 dimensions=product_data.dimensions,
                 weight=product_data.weight,
-                work_type=product_data.work_type.value,
+                work_type=product_data.work_type.value if product_data.work_type else None,
                 brand=product_data.brand,
                 limited_edition=product_data.limited_edition,
             )
