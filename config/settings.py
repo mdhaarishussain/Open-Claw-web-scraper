@@ -52,6 +52,10 @@ class Settings:
     CEREBRAS_API_KEY = os.getenv("CEREBRAS_API_KEY")
     CEREBRAS_MODEL = os.getenv("CEREBRAS_MODEL", "gpt-oss-120b")
 
+    # Groq Settings (Extremely fast inference, generous free tier)
+    GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+    GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+
     # Scraping Configuration
     MIN_DELAY = float(os.getenv("MIN_DELAY_SECONDS", "2"))
     MAX_DELAY = float(os.getenv("MAX_DELAY_SECONDS", "7"))
@@ -110,7 +114,7 @@ class Settings:
         errors = []
 
         # Check LLM provider is valid
-        valid_providers = ['ollama', 'openai', 'anthropic', 'cerebras']
+        valid_providers = ['ollama', 'openai', 'anthropic', 'cerebras', 'groq']
         if cls.LLM_PROVIDER not in valid_providers:
             errors.append(f"LLM_PROVIDER must be one of {valid_providers}, got: {cls.LLM_PROVIDER}")
 
@@ -121,6 +125,8 @@ class Settings:
             errors.append("ANTHROPIC_API_KEY is required when LLM_PROVIDER=anthropic")
         if cls.LLM_PROVIDER == 'cerebras' and not cls.CEREBRAS_API_KEY:
             errors.append("CEREBRAS_API_KEY is required when LLM_PROVIDER=cerebras")
+        if cls.LLM_PROVIDER == 'groq' and not cls.GROQ_API_KEY:
+            errors.append("GROQ_API_KEY is required when LLM_PROVIDER=groq")
 
         # Check fallback provider if specified
         if cls.LLM_FALLBACK:

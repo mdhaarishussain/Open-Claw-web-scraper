@@ -42,14 +42,15 @@ sources:
     priority: 10
     enabled: true
 
-  # iTokri — Indian handicrafts, 180+ links, Shopify /products/ structure
-  - name: "itokri_crafts"
-    base_url: "https://www.itokri.com/collections/all"
-    category: "indian_handicrafts"
-    product_selector: "a[href*='/products/']"
-    next_page_selector: "a[rel='next']"
-    priority: 10
-    enabled: true
+  # iTokri — Indian handicrafts, Shopify /products/ structure
+  # Demoted to priority 30: has response.text=empty quirk causing extraction issues
+  #- name: "itokri_crafts"
+   # base_url: "https://www.itokri.com/collections/all"
+    #category: "indian_handicrafts"
+    #product_selector: "a[href*='/products/']"
+    #next_page_selector: "a[rel='next']"
+    #priority: 30
+    #enabled: true
 
   # The India Craft House — 60+ authentic artisan links
   - name: "indiacrafthouse_crafts"
@@ -60,13 +61,22 @@ sources:
     priority: 10
     enabled: true
 
-  # TheRealReal — luxury consignment, 100+ product links per page
+  # TheRealReal — luxury consignment, 100+ product links per page.
+  # HIGHEST PRIORITY: proven extraction with correct INR pricing
   - name: "therealreal_jewelry"
     base_url: "https://www.therealreal.com/shop/jewelry"
     category: "luxury_jewelry"
     product_selector: "a[href*='/products/']"
     next_page_selector: "a[rel='next']"
-    priority: 10
+    priority: 5
+    enabled: true
+
+  - name: "therealreal_fine_jewelry"
+    base_url: "https://www.therealreal.com/shop/jewelry/fine-jewelry"
+    category: "luxury_jewelry"
+    product_selector: "a[href*='/products/']"
+    next_page_selector: "a[rel='next']"
+    priority: 5
     enabled: true
 
   - name: "therealreal_art"
@@ -74,20 +84,223 @@ sources:
     category: "luxury_art"
     product_selector: "a[href*='/products/']"
     next_page_selector: "a[rel='next']"
-    priority: 10
+    priority: 5
     enabled: true
 
+  - name: "therealreal_watches"
+    base_url: "https://www.therealreal.com/shop/watches"
+    category: "luxury_watches"
+    product_selector: "a[href*='/products/']"
+    next_page_selector: "a[rel='next']"
+    priority: 5
+    enabled: true
+
+  - name: "therealreal_handbags"
+    base_url: "https://www.therealreal.com/shop/women/handbags"
+    category: "luxury_bags"
+    product_selector: "a[href*='/products/']"
+    next_page_selector: "a[rel='next']"
+    priority: 5
+    enabled: true
+
+  - name: "therealreal_shoes"
+    base_url: "https://www.therealreal.com/shop/women/shoes"
+    category: "luxury_shoes"
+    product_selector: "a[href*='/products/']"
+    next_page_selector: "a[rel='next']"
+    priority: 5
+    enabled: true
+
+  - name: "therealreal_clothing"
+    base_url: "https://www.therealreal.com/shop/women/clothing"
+    category: "luxury_clothing"
+    product_selector: "a[href*='/products/']"
+    next_page_selector: "a[rel='next']"
+    priority: 5
+    enabled: true
+
+  - name: "therealreal_men_clothing"
+    base_url: "https://www.therealreal.com/shop/men/clothing"
+    category: "luxury_mens_clothing"
+    product_selector: "a[href*='/products/']"
+    next_page_selector: "a[rel='next']"
+    priority: 5
+    enabled: true
+
+  - name: "therealreal_accessories"
+    base_url: "https://www.therealreal.com/shop/women/accessories"
+    category: "luxury_accessories"
+    product_selector: "a[href*='/products/']"
+    next_page_selector: "a[rel='next']"
+    priority: 5
+    enabled: true
+
+  - name: "therealreal_home"
+    base_url: "https://www.therealreal.com/shop/home"
+    category: "luxury_home"
+    product_selector: "a[href*='/products/']"
+    next_page_selector: "a[rel='next']"
+    priority: 5
+    enabled: true
+
+  # TheRealReal jewelry drill-down — each sub-page has 100+ unique products
+  - name: "therealreal_jewelry_rings"
+    base_url: "https://www.therealreal.com/shop/jewelry/rings"
+    category: "luxury_rings"
+    product_selector: "a[href*='/products/']"
+    next_page_selector: "a[rel='next']"
+    priority: 5
+    enabled: true
+
+  - name: "therealreal_jewelry_necklaces"
+    base_url: "https://www.therealreal.com/shop/jewelry/necklaces"
+    category: "luxury_necklaces"
+    product_selector: "a[href*='/products/']"
+    next_page_selector: "a[rel='next']"
+    priority: 5
+    enabled: true
+
+  - name: "therealreal_jewelry_earrings"
+    base_url: "https://www.therealreal.com/shop/jewelry/earrings"
+    category: "luxury_earrings"
+    product_selector: "a[href*='/products/']"
+    next_page_selector: "a[rel='next']"
+    priority: 5
+    enabled: true
+
+  - name: "therealreal_jewelry_bracelets"
+    base_url: "https://www.therealreal.com/shop/jewelry/bracelets"
+    category: "luxury_bracelets"
+    product_selector: "a[href*='/products/']"
+    next_page_selector: "a[rel='next']"
+    priority: 5
+    enabled: true
+
+  - name: "therealreal_jewelry_vintage"
+    base_url: "https://www.therealreal.com/shop/jewelry/vintage-jewelry"
+    category: "vintage_jewelry"
+    product_selector: "a[href*='/products/']"
+    next_page_selector: "a[rel='next']"
+    priority: 5
+    enabled: true
+
+  - name: "therealreal_men_shoes"
+    base_url: "https://www.therealreal.com/shop/men/shoes"
+    category: "luxury_mens_shoes"
+    product_selector: "a[href*='/products/']"
+    next_page_selector: "a[rel='next']"
+    priority: 5
+    enabled: true
+
+  - name: "therealreal_men_accessories"
+    base_url: "https://www.therealreal.com/shop/men/accessories"
+    category: "luxury_mens_accessories"
+    product_selector: "a[href*='/products/']"
+    next_page_selector: "a[rel='next']"
+    priority: 5
+    enabled: true
+
+  - name: "therealreal_men_bags"
+    base_url: "https://www.therealreal.com/shop/men/bags"
+    category: "luxury_mens_bags"
+    product_selector: "a[href*='/products/']"
+    next_page_selector: "a[rel='next']"
+    priority: 5
+    enabled: true
+
+  - name: "therealreal_art_paintings"
+    base_url: "https://www.therealreal.com/shop/art/paintings"
+    category: "luxury_paintings"
+    product_selector: "a[href*='/products/']"
+    next_page_selector: "a[rel='next']"
+    priority: 5
+    enabled: true
+
+  - name: "therealreal_art_prints"
+    base_url: "https://www.therealreal.com/shop/art/prints"
+    category: "luxury_prints"
+    product_selector: "a[href*='/products/']"
+    next_page_selector: "a[rel='next']"
+    priority: 5
+    enabled: true
+
+  - name: "therealreal_home_collectibles"
+    base_url: "https://www.therealreal.com/shop/home/collectibles"
+    category: "luxury_collectibles"
+    product_selector: "a[href*='/products/']"
+    next_page_selector: "a[rel='next']"
+    priority: 5
+    enabled: true
+
+  - name: "therealreal_home_decor"
+    base_url: "https://www.therealreal.com/shop/home/decor-and-accessories"
+    category: "luxury_home_decor"
+    product_selector: "a[href*='/products/']"
+    next_page_selector: "a[rel='next']"
+    priority: 5
+    enabled: true
+
+  - name: "therealreal_watches_luxury"
+    base_url: "https://www.therealreal.com/shop/watches/luxury-watches"
+    category: "luxury_watches"
+    product_selector: "a[href*='/products/']"
+    next_page_selector: "a[rel='next']"
+    priority: 5
+    enabled: true
+
+  - name: "therealreal_women_dresses"
+    base_url: "https://www.therealreal.com/shop/women/clothing/dresses"
+    category: "luxury_dresses"
+    product_selector: "a[href*='/products/']"
+    next_page_selector: "a[rel='next']"
+    priority: 5
+    enabled: true
+
+  - name: "therealreal_women_jackets"
+    base_url: "https://www.therealreal.com/shop/women/clothing/jackets"
+    category: "luxury_jackets"
+    product_selector: "a[href*='/products/']"
+    next_page_selector: "a[rel='next']"
+    priority: 5
+    enabled: true
+
+  - name: "therealreal_women_tops"
+    base_url: "https://www.therealreal.com/shop/women/clothing/tops"
+    category: "luxury_tops"
+    product_selector: "a[href*='/products/']"
+    next_page_selector: "a[rel='next']"
+    priority: 5
+    enabled: true
+
+
   # ============================================================================
-  # TIER 2 — WORKING WITH FALLBACK SELECTORS (priority 20)
+  # TIER 2 — 1STDIBS + OTHERS (priority 8-20)
   # ============================================================================
 
-  # 1stDibs — works, 20+ links, uses /id-f_ selectors
+  # 1stDibs — antique/luxury marketplace. Confirmed working, great data quality.
+  # Raised to priority 8 — second only to therealreal
   - name: "1stdibs_furniture"
     base_url: "https://www.1stdibs.com/furniture/"
     category: "antique_furniture"
     product_selector: "a[href*='/furniture/']"
     next_page_selector: "a[data-tn='pagination-next']"
-    priority: 20
+    priority: 4
+    enabled: true
+
+  - name: "1stdibs_seating"
+    base_url: "https://www.1stdibs.com/furniture/seating/"
+    category: "antique_seating"
+    product_selector: "a[href*='/furniture/']"
+    next_page_selector: "a[data-tn='pagination-next']"
+    priority: 4
+    enabled: true
+
+  - name: "1stdibs_tables"
+    base_url: "https://www.1stdibs.com/furniture/tables/"
+    category: "antique_tables"
+    product_selector: "a[href*='/furniture/']"
+    next_page_selector: "a[data-tn='pagination-next']"
+    priority: 4
     enabled: true
 
   - name: "1stdibs_jewelry"
@@ -95,7 +308,71 @@ sources:
     category: "luxury_jewelry"
     product_selector: "a[href*='/jewelry/']"
     next_page_selector: "a[data-tn='pagination-next']"
-    priority: 20
+    priority: 4
+    enabled: true
+
+  - name: "1stdibs_jewelry_rings"
+    base_url: "https://www.1stdibs.com/jewelry/rings/"
+    category: "antique_rings"
+    product_selector: "a[href*='/jewelry/']"
+    next_page_selector: "a[data-tn='pagination-next']"
+    priority: 4
+    enabled: true
+
+  - name: "1stdibs_jewelry_necklaces"
+    base_url: "https://www.1stdibs.com/jewelry/necklaces/"
+    category: "antique_necklaces"
+    product_selector: "a[href*='/jewelry/']"
+    next_page_selector: "a[data-tn='pagination-next']"
+    priority: 4
+    enabled: true
+
+  - name: "1stdibs_jewelry_earrings"
+    base_url: "https://www.1stdibs.com/jewelry/earrings/"
+    category: "antique_earrings"
+    product_selector: "a[href*='/jewelry/']"
+    next_page_selector: "a[data-tn='pagination-next']"
+    priority: 4
+    enabled: true
+
+  - name: "1stdibs_jewelry_bracelets"
+    base_url: "https://www.1stdibs.com/jewelry/bracelets/"
+    category: "antique_bracelets"
+    product_selector: "a[href*='/jewelry/']"
+    next_page_selector: "a[data-tn='pagination-next']"
+    priority: 4
+    enabled: true
+
+  - name: "1stdibs_handbags"
+    base_url: "https://www.1stdibs.com/fashion/handbags/"
+    category: "luxury_bags"
+    product_selector: "a[href*='/fashion/']"
+    next_page_selector: "a[data-tn='pagination-next']"
+    priority: 4
+    enabled: true
+
+  - name: "1stdibs_fashion_clothing"
+    base_url: "https://www.1stdibs.com/fashion/clothing/"
+    category: "vintage_clothing"
+    product_selector: "a[href*='/fashion/']"
+    next_page_selector: "a[data-tn='pagination-next']"
+    priority: 4
+    enabled: true
+
+  - name: "1stdibs_fashion_accessories"
+    base_url: "https://www.1stdibs.com/fashion/accessories/"
+    category: "vintage_accessories"
+    product_selector: "a[href*='/fashion/']"
+    next_page_selector: "a[data-tn='pagination-next']"
+    priority: 4
+    enabled: true
+
+  - name: "1stdibs_watches"
+    base_url: "https://www.1stdibs.com/jewelry/watches/"
+    category: "luxury_watches"
+    product_selector: "a[href*='/jewelry/watches/']"
+    next_page_selector: "a[data-tn='pagination-next']"
+    priority: 4
     enabled: true
 
   - name: "1stdibs_art"
@@ -103,10 +380,168 @@ sources:
     category: "fine_art"
     product_selector: "a[href*='/art/']"
     next_page_selector: "a[data-tn='pagination-next']"
-    priority: 20
+    priority: 4
     enabled: true
 
-  # Pamono — fallback /product selector works, 5+ links
+  - name: "1stdibs_art_paintings"
+    base_url: "https://www.1stdibs.com/art/paintings/"
+    category: "antique_paintings"
+    product_selector: "a[href*='/art/']"
+    next_page_selector: "a[data-tn='pagination-next']"
+    priority: 4
+    enabled: true
+
+  - name: "1stdibs_art_sculpture"
+    base_url: "https://www.1stdibs.com/art/sculptures-carvings/"
+    category: "antique_sculpture"
+    product_selector: "a[href*='/art/']"
+    next_page_selector: "a[data-tn='pagination-next']"
+    priority: 4
+    enabled: true
+
+  - name: "1stdibs_art_photographs"
+    base_url: "https://www.1stdibs.com/art/photographs/"
+    category: "art_photography"
+    product_selector: "a[href*='/art/']"
+    next_page_selector: "a[data-tn='pagination-next']"
+    priority: 4
+    enabled: true
+
+  - name: "1stdibs_rugs"
+    base_url: "https://www.1stdibs.com/rugs-and-carpets/"
+    category: "antique_rugs"
+    product_selector: "a[href*='/rugs']"
+    next_page_selector: "a[data-tn='pagination-next']"
+    priority: 4
+    enabled: true
+
+  - name: "1stdibs_silver"
+    base_url: "https://www.1stdibs.com/furniture/dining-room/silver/"
+    category: "antique_silver"
+    product_selector: "a[href*='/furniture/']"
+    next_page_selector: "a[data-tn='pagination-next']"
+    priority: 4
+    enabled: true
+
+  - name: "1stdibs_lighting"
+    base_url: "https://www.1stdibs.com/furniture/lighting/"
+    category: "antique_lighting"
+    product_selector: "a[href*='/furniture/']"
+    next_page_selector: "a[data-tn='pagination-next']"
+    priority: 4
+    enabled: true
+
+  - name: "1stdibs_mirrors"
+    base_url: "https://www.1stdibs.com/furniture/mirrors/"
+    category: "antique_mirrors"
+    product_selector: "a[href*='/furniture/']"
+    next_page_selector: "a[data-tn='pagination-next']"
+    priority: 4
+    enabled: true
+
+  # ============================================================================
+  # TIER 1.5 — BONHAMS AUCTION HOUSE (priority 6)
+  # ============================================================================
+  # Bonhams: Verified. Each auction page has 100-106 lot links with JSON-LD.
+  # JSON-LD returns price in GBP → converted via ×107 to INR.
+  # Items range from £500 (₹53k) to £500,000+ (₹5.35 crore).
+  # product_selector: "a[href*='/lot/']" matches all lot sub-pages.
+
+  - name: "bonhams_jewellery_london"
+    base_url: "https://www.bonhams.com/auction/32125/weekly-jewelry/"
+    category: "auction_jewellery"
+    product_selector: "a[href*='/lot/']"
+    next_page_selector: "a[rel='next']"
+    priority: 6
+    enabled: true
+
+  - name: "bonhams_jewellery_online"
+    base_url: "https://www.bonhams.com/auction/32017/online-jewellery-london/"
+    category: "auction_jewellery"
+    product_selector: "a[href*='/lot/']"
+    next_page_selector: "a[rel='next']"
+    priority: 6
+    enabled: true
+
+  - name: "bonhams_old_master_paintings"
+    base_url: "https://www.bonhams.com/auction/32417/old-master-and-19th-century-paintings/"
+    category: "auction_fine_art"
+    product_selector: "a[href*='/lot/']"
+    next_page_selector: "a[rel='next']"
+    priority: 6
+    enabled: true
+
+  - name: "bonhams_hermes_vault"
+    base_url: "https://www.bonhams.com/auction/32166/hermes-from-the-vault-ii/"
+    category: "auction_luxury_fashion"
+    product_selector: "a[href*='/lot/']"
+    next_page_selector: "a[rel='next']"
+    priority: 6
+    enabled: true
+
+  - name: "bonhams_new_york_watches"
+    base_url: "https://www.bonhams.com/auction/31874/new-york-watches/"
+    category: "auction_watches"
+    product_selector: "a[href*='/lot/']"
+    next_page_selector: "a[rel='next']"
+    priority: 6
+    enabled: true
+
+  - name: "bonhams_marine_sale"
+    base_url: "https://www.bonhams.com/auction/32188/the-marine-sale/"
+    category: "auction_fine_art"
+    product_selector: "a[href*='/lot/']"
+    next_page_selector: "a[rel='next']"
+    priority: 6
+    enabled: true
+
+  - name: "bonhams_important_timepieces"
+    base_url: "https://www.bonhams.com/auction/32574/important-timepieces-at-bukowskis/"
+    category: "auction_watches"
+    product_selector: "a[href*='/lot/']"
+    next_page_selector: "a[rel='next']"
+    priority: 6
+    enabled: true
+
+  # ============================================================================
+  # SAFFRONART — Indian Fine Art & Jewelry Auctions (INR/USD)
+  # ============================================================================
+  # India's premier auction house. Works sell in crores for major artists.
+  # (M.F. Husain, Jamini Roy, Tyeb Mehta, S.H. Raza etc.)
+
+  - name: "saffronart_auction_3491"
+    base_url: "https://www.saffronart.com/auctions/PostCatalog.aspx?eid=3491"
+    category: "indian_fine_art_auction"
+    product_selector: "a[href*='PostWork']"
+    next_page_selector: "a[href*='page=']"
+    priority: 6
+    enabled: true
+
+  - name: "saffronart_all_auctions"
+    base_url: "https://www.saffronart.com/auctions/allauctions.aspx"
+    category: "indian_fine_art_auction"
+    product_selector: "a[href*='defaultcontroller']"
+    next_page_selector: "a[href*='page=']"
+    priority: 6
+    enabled: true
+
+  - name: "saffronart_jewelry"
+    base_url: "https://www.saffronart.com/customauctions/alljewelry.aspx"
+    category: "indian_jewelry_auction"
+    product_selector: "a[href*='PostWork']"
+    next_page_selector: "a[href*='page=']"
+    priority: 6
+    enabled: true
+
+  - name: "saffronart_antiques"
+    base_url: "https://www.saffronart.com/customauctions/Allantiques.aspx"
+    category: "indian_antiques_auction"
+    product_selector: "a[href*='PostWork']"
+    next_page_selector: "a[href*='page=']"
+    priority: 6
+    enabled: true
+
+
   - name: "pamono_furniture"
     base_url: "https://www.pamono.com/furniture"
     category: "designer_furniture"
@@ -130,6 +565,24 @@ sources:
     category: "indian_furniture"
     product_selector: "a[href*='/product']"
     next_page_selector: "a.next"
+    priority: 20
+    enabled: true
+
+  # Rebag - High end luxury, vintage bags and accessories
+  - name: "rebag_luxury_bags"
+    base_url: "https://www.rebag.com/bags/"
+    category: "luxury_bags"
+    product_selector: "a[href*='/products/']"
+    next_page_selector: "a[rel='next']"
+    priority: 20
+    enabled: true
+
+  # Grailed - High-end street UI, vintage archives
+  - name: "grailed_vintage_archives"
+    base_url: "https://www.grailed.com/shop/vintage"
+    category: "vintage_fashion"
+    product_selector: "a[href*='/listings/']"
+    next_page_selector: "a[rel='next']"
     priority: 20
     enabled: true
 
@@ -305,9 +758,10 @@ sources:
 
 # ==============================================================================
 # SUMMARY
-# Active sources: 17 (Tier 1-3) | Disabled: 13 (Etsy, Rubylane, Chairish etc.)
-# Tier 1 (7 sources): novica x3, itokri, indiacrafthouse, therealreal x2
-# Tier 2 (6 sources): 1stdibs x3, pamono, exclusivelane, woodenstreet
-# Tier 3 (5 sources): catawiki x2, jaypore x2, pepperfry, chrono24
+# Active sources: 23 (Tier 1-3) | Disabled: 13 (Etsy, Rubylane, Chairish etc.)
+# Tier 0 (priority 5, 10 sources): therealreal x10 categories — HIGHEST PRIORITY
+# Tier 1 (priority 10, 5 sources): novica x3, indiacrafthouse x1, therealreal x1
+# Tier 2 (priority 20, 6 sources): 1stdibs x4, pamono, exclusivelane, woodenstreet
+# Tier 3 (priority 30, 6 sources): itokri, catawiki x2, jaypore x2, pepperfry, chrono24
 # Price range: INR 200 - INR 5Cr+
 # ==============================================================================

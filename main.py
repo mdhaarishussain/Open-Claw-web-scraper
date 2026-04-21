@@ -87,7 +87,7 @@ def main():
             except OSError:
                 pass
 
-        from src.orchestrator.spider_pipeline import run_spider_pipeline
+        from src.orchestrator.fast_pipeline import run_spider_pipeline
         run_spider_pipeline()
 
         logger.info("=" * 80)

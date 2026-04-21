@@ -95,7 +95,7 @@ class HeartisansSpider(Spider):
         self.sources_config = sources or []
         self.target_rows = target_rows or settings.TARGET_ROW_COUNT
         self.concurrent_requests = settings.CONCURRENT_REQUESTS
-        self.download_delay = 0.5  # 0.5s between requests (was 2s) — much faster
+        self.download_delay = 0.2  # 0.2s between requests — fast HTTP fetcher, no browser overhead
 
         # Build source lookup map — ALL sources go in the map for URL matching.
         # start_urls is the limited subset we actually request.
@@ -184,14 +184,19 @@ class HeartisansSpider(Spider):
 
     def configure_sessions(self, manager):
         """
-        Use AsyncDynamicSession — the only async-compatible session for the Spider.
-        headless=True avoids spinning up a visible browser window.
-        network_idle=False means we don't wait for all trackers/ads to load —
-        we just need the main DOM content.
+        Single AsyncDynamicSession tuned for maximum speed:
+          - disable_resources=True  → blocks images, CSS, fonts, ads (60-80% less
+                                      download per page, dramatically faster)
+          - network_idle=False      → don't wait for analytics/tracking pixels
+          - headless=True           → no visible browser window
         """
         manager.add(
             "fast",
-            AsyncDynamicSession(headless=True),
+            AsyncDynamicSession(
+                headless=True,
+                disable_resources=True,
+                network_idle=False,
+            ),
             lazy=True,
         )
 
@@ -250,12 +255,12 @@ class HeartisansSpider(Spider):
             f"[page] {url[:80]}... → {len(product_links)} product links"
         )
 
-        # ---------------------------------------------------------------
-        # SMART QUOTA: only queue as many product pages as we still need.
-        # We queue up to 100 links per category to ensure we find enough valid items
-        # with prices. Scrapling internally limits active concurrency, so this doesn't
-        # overwhelm bandwidth or RAM.
-        queue_limit = 100
+        # SMART QUOTA: queue just enough links to meet the target.
+        # If we need 5 rows, queuing 300 links means wasting time downloading 295 extra pages
+        # even if we skip extraction. We multiply by 2 or 3 to account for failures.
+        queue_limit = min(100, (self.target_rows - self.row_count) * 3)
+        if queue_limit <= 0:
+            return
         
         # Take at most queue_limit links from this page
         links_to_queue = []

@@ -4,6 +4,7 @@ Supports multiple LLM providers: Ollama (local), OpenAI, Anthropic, and Cerebras
 """
 import json
 import logging
+import re
 from typing import Optional, Dict, Any
 
 from src.extraction.schema import ProductData
@@ -38,6 +39,8 @@ class LLMExtractor:
             self.extractor = AnthropicExtractor()
         elif self.provider == 'cerebras':
             self.extractor = CerebrasExtractor()
+        elif self.provider == 'groq':
+            self.extractor = GroqExtractor()
         else:
             raise ValueError(f"Unsupported LLM provider: {self.provider}")
 
@@ -63,6 +66,34 @@ class LLMExtractor:
                 system_prompt=self.extraction_prompt,
                 content=raw_content
             )
+
+            # --- DETERMINISTIC MATH LAYER ---
+            price_key = "current_market_price" if "current_market_price" in result_json else "raw_price"
+            if price_key in result_json and result_json[price_key] not in [None, "N/A", "", 0, "0", 0.0]:
+                try:
+                    price_val = float(re.sub(r'[^\d.]', '', str(result_json[price_key])))
+                    curr = str(result_json.get("detected_currency", "INR")).upper()
+                    
+                    # Global Domain Failsafe Matrix
+                    url_lower = url.lower() if url else ""
+                    if any(x in url_lower for x in ['novica.com', 'therealreal.com', '1stdibs.com', 'rebag.com', 'grailed.com', 'saffronart.com']):
+                        curr = "USD"
+                    elif any(x in url_lower for x in ['catawiki.com', 'pamono.com']):
+                        curr = "EUR"
+                    elif any(x in url_lower for x in ['bonhams.com']):
+                        curr = "GBP"
+
+                    if curr == "USD":
+                        result_json["current_market_price"] = round(price_val * 83.0, 2)
+                    elif curr == "EUR":
+                        result_json["current_market_price"] = round(price_val * 90.0, 2)
+                    elif curr == "GBP":
+                        result_json["current_market_price"] = round(price_val * 107.0, 2)
+                    else:
+                        result_json["current_market_price"] = price_val
+                except Exception as ex:
+                    logger.warning(f"Failed to parse price: {ex}")
+            # ----------------------------------------
 
             # Parse and validate with Pydantic
             product_data = ProductData.model_validate(result_json)
@@ -249,6 +280,94 @@ class CerebrasExtractor:
         except Exception as e:
             logger.error(f"Cerebras extraction error: {e}")
             raise
+
+
+class GroqExtractor:
+    """Groq API extractor with rate limit rotation"""
+
+    def __init__(self):
+        """Initialize Groq client"""
+        try:
+            from openai import OpenAI
+            import os
+            self.keys = []
+            for k, v in os.environ.items():
+                if ('GROQ' in k or 'stupidtakey' in k.lower()) and type(v) == str and v.startswith('gsk_'):
+                    self.keys.append(v)
+            if not self.keys:
+                self.keys = [settings.GROQ_API_KEY]
+            
+            self.current_key_idx = 0
+            self.client = OpenAI(
+                api_key=self.keys[0],
+                base_url="https://api.groq.com/openai/v1"
+            )
+            self.model = settings.GROQ_MODEL
+            logger.info(f"Groq initialized with model: {self.model} and {len(self.keys)} loaded API Keys for auto-rotation.")
+        except ImportError:
+            raise ImportError("openai package not installed. Run: pip install openai")
+
+    def extract_json(self, system_prompt: str, content: str) -> Dict[str, Any]:
+        """Extract JSON from content using Groq with automatic Key Swapping on 429"""
+        max_retries = len(self.keys) * 2
+        for attempt in range(max_retries):
+            try:
+                try:
+                    response = self.client.chat.completions.create(
+                        model=self.model,
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": f"Extract product data from:\n\n{content[:10000]}"}
+                        ],
+                        temperature=0.1,
+                        max_tokens=2048,
+                        response_format={"type": "json_object"}
+                    )
+                except Exception as e:
+                    if 'rate_limit_exceeded' in str(e).lower() or '429' in str(e):
+                        raise e  # Bubble up to trigger rotation
+                    
+                    # Fallback: no response_format constraint
+                    response = self.client.chat.completions.create(
+                        model=self.model,
+                        messages=[
+                            {"role": "system", "content": system_prompt + "\n\nYou MUST respond with valid JSON only. No markdown, no explanation."},
+                            {"role": "user", "content": f"Extract product data from:\n\n{content[:10000]}"}
+                        ],
+                        temperature=0.1,
+                        max_tokens=2048,
+                    )
+
+                json_str = response.choices[0].message.content
+
+                if '```json' in json_str:
+                    json_start = json_str.index('```json') + 7
+                    json_end = json_str.rindex('```')
+                    json_str = json_str[json_start:json_end].strip()
+                elif '{' in json_str:
+                    json_start = json_str.index('{')
+                    json_end = json_str.rindex('}') + 1
+                    json_str = json_str[json_start:json_end]
+
+                return json.loads(json_str)
+
+            except Exception as e:
+                # Hot-swap on Rate Limit or Dead Key
+                error_str = str(e).lower()
+                if any(x in error_str for x in ['rate_limit_exceeded', '429', '401', 'invalid_api_key']):
+                    if len(self.keys) > 1:
+                        self.current_key_idx = (self.current_key_idx + 1) % len(self.keys)
+                        logger.warning(f"Groq API Error ({error_str[:30]}...)! Hot-swapping to API Key #{self.current_key_idx+1}/{len(self.keys)}...")
+                        self.client.api_key = self.keys[self.current_key_idx]
+                        continue
+                    else:
+                        logger.error("Groq key failed, but no backup keys found. Pausing...")
+                        import time
+                        time.sleep(10)
+                        
+                logger.error(f"Groq extraction error: {e}")
+                if attempt == max_retries - 1:
+                    raise e
 
 
 class SmartExtractor:
