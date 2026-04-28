@@ -220,66 +220,98 @@ class AnthropicExtractor:
 
 
 class CerebrasExtractor:
-    """Cerebras Inference API extractor (fast inference with Llama models)"""
+    """Cerebras Inference API extractor with rate limit rotation"""
 
     def __init__(self):
         """Initialize Cerebras client"""
         try:
             from openai import OpenAI
-            # Cerebras uses OpenAI-compatible API
+            import os
+            self.keys = []
+            for k, v in os.environ.items():
+                if type(v) == str and v.startswith('csk-'):
+                    self.keys.append(v)
+            if not self.keys:
+                self.keys = [settings.CEREBRAS_API_KEY]
+            
+            self.current_key_idx = 0
             self.client = OpenAI(
-                api_key=settings.CEREBRAS_API_KEY,
+                api_key=self.keys[0],
                 base_url="https://api.cerebras.ai/v1"
             )
             self.model = settings.CEREBRAS_MODEL
-            logger.info(f"Cerebras initialized with model: {self.model}")
+            logger.info(f"Cerebras initialized with model: {self.model} and {len(self.keys)} loaded API Keys for auto-rotation.")
         except ImportError:
             raise ImportError("openai package not installed. Run: pip install openai")
 
     def extract_json(self, system_prompt: str, content: str) -> Dict[str, Any]:
-        """Extract JSON from content using Cerebras"""
-        try:
-            # Try with json_object format first (not all models support it)
+        """Extract JSON from content using Cerebras with automatic Key Swapping on 429"""
+        max_retries = len(self.keys) * 2
+        for attempt in range(max_retries):
             try:
-                response = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": f"Extract product data from:\n\n{content[:10000]}"}
-                    ],
-                    temperature=0.1,
-                    max_tokens=2048,
-                    response_format={"type": "json_object"}
-                )
-            except Exception:
-                # Fallback: no response_format constraint
-                response = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=[
-                        {"role": "system", "content": system_prompt + "\n\nYou MUST respond with valid JSON only. No markdown, no explanation."},
-                        {"role": "user", "content": f"Extract product data from:\n\n{content[:10000]}"}
-                    ],
-                    temperature=0.1,
-                    max_tokens=2048,
-                )
+                try:
+                    response = self.client.chat.completions.create(
+                        model=self.model,
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": f"Extract product data from:\n\n{content[:10000]}"}
+                        ],
+                        temperature=0.1,
+                        max_tokens=2048,
+                        response_format={"type": "json_object"}
+                    )
+                except Exception as e:
+                    if 'rate_limit_exceeded' in str(e).lower() or '429' in str(e):
+                        raise e  # Bubble up to trigger rotation
+                        
+                    # Fallback: no response_format constraint
+                    response = self.client.chat.completions.create(
+                        model=self.model,
+                        messages=[
+                            {"role": "system", "content": system_prompt + "\n\nYou MUST respond with valid JSON only. No markdown, no explanation."},
+                            {"role": "user", "content": f"Extract product data from:\n\n{content[:10000]}"}
+                        ],
+                        temperature=0.1,
+                        max_tokens=2048,
+                    )
 
-            json_str = response.choices[0].message.content
+                json_str = response.choices[0].message.content
 
-            # Extract JSON if wrapped in markdown or text
-            if '```json' in json_str:
-                json_start = json_str.index('```json') + 7
-                json_end = json_str.rindex('```')
-                json_str = json_str[json_start:json_end].strip()
-            elif '{' in json_str:
-                json_start = json_str.index('{')
-                json_end = json_str.rindex('}') + 1
-                json_str = json_str[json_start:json_end]
+                # Extract JSON if wrapped in markdown or text
+                if '```json' in json_str:
+                    json_start = json_str.index('```json') + 7
+                    json_end = json_str.rindex('```')
+                    json_str = json_str[json_start:json_end].strip()
+                elif '{' in json_str:
+                    json_start = json_str.index('{')
+                    json_end = json_str.rindex('}') + 1
+                    json_str = json_str[json_start:json_end]
 
-            return json.loads(json_str)
+                return json.loads(json_str)
 
-        except Exception as e:
-            logger.error(f"Cerebras extraction error: {e}")
-            raise
+            except Exception as e:
+                # Hot-swap on Rate Limit or Dead Key
+                error_str = str(e).lower()
+                if any(x in error_str for x in ['rate_limit_exceeded', '429', '401', 'invalid_api_key']):
+                    if len(self.keys) > 1:
+                        self.current_key_idx = (self.current_key_idx + 1) % len(self.keys)
+                        logger.warning(f"Cerebras API Error ({error_str[:30]}...)! Hot-swapping to API Key #{self.current_key_idx+1}/{len(self.keys)}...")
+                        from openai import OpenAI
+                        self.client = OpenAI(
+                            api_key=self.keys[self.current_key_idx],
+                            base_url="https://api.cerebras.ai/v1"
+                        )
+                        import time
+                        time.sleep(2.0) # Prevent burning through all keys in <1 second
+                        continue
+                    else:
+                        logger.error("Cerebras key failed, but no backup keys found. Pausing...")
+                        import time
+                        time.sleep(10)
+                        
+                logger.error(f"Cerebras extraction error: {e}")
+                if attempt == max_retries - 1:
+                    raise e
 
 
 class GroqExtractor:
@@ -358,7 +390,13 @@ class GroqExtractor:
                     if len(self.keys) > 1:
                         self.current_key_idx = (self.current_key_idx + 1) % len(self.keys)
                         logger.warning(f"Groq API Error ({error_str[:30]}...)! Hot-swapping to API Key #{self.current_key_idx+1}/{len(self.keys)}...")
-                        self.client.api_key = self.keys[self.current_key_idx]
+                        from openai import OpenAI
+                        self.client = OpenAI(
+                            api_key=self.keys[self.current_key_idx],
+                            base_url="https://api.groq.com/openai/v1"
+                        )
+                        import time
+                        time.sleep(2.0) # Prevent burning through all keys in <1 second
                         continue
                     else:
                         logger.error("Groq key failed, but no backup keys found. Pausing...")

@@ -45,7 +45,11 @@ class NativeFastPipeline:
         self.product_queue = asyncio.Queue()
         self.category_queue = asyncio.Queue()
         self.target_reached_event = asyncio.Event()
-        self.llm_semaphore = asyncio.Semaphore(1)
+        # Maximize concurrency using the 12 Groq API keys pool
+        self.llm_semaphore = asyncio.Semaphore(15)
+        
+        # In-memory deduplication cache to block duplicates of failed items in the same session
+        self.seen_urls = set()
 
     def _find_source(self, url: str) -> Optional[dict]:
         if url in self._source_map:
@@ -89,7 +93,7 @@ class NativeFastPipeline:
                 is_stealth = any(domain in url.lower() for domain in ['1stdibs.com', 'therealreal.com', 'rebag.com', 'grailed.com'])
                 
                 if is_stealth:
-                    response = await self.stealth_session.fetch(url, network_idle=True)
+                    response = await self.stealth_session.fetch(url)
                 else:
                     response = await fetcher.get(url)
                 
@@ -109,7 +113,34 @@ class NativeFastPipeline:
                     href = link.attrib.get('href', '').strip()
                     if href:
                         product_url = response.urljoin(href)
-                        await self.product_queue.put(product_url)
+                        
+                        # Standardize liveauctioneers item URLs to prevent duplicate slug variants
+                        if 'liveauctioneers.com/item/' in product_url:
+                            import re as _re
+                            # Match the base item ID and strip the trailing slug string
+                            product_url = _re.sub(r'(/item/\d+)[^?/]*', r'\1', product_url)
+                            
+                        # Pre-append category to URL so DB deduplication catches it before downloading
+                        if source and source.get('category'):
+                            cat_val = source.get('category')
+                            url_sep = '&' if '?' in product_url else '?'
+                            product_url = f"{product_url}{url_sep}src_cat={cat_val}"
+                        
+                        # In-memory dedup to prevent burning tokens on the exact same item multiple times
+                        if product_url in self.seen_urls:
+                            continue
+                        self.seen_urls.add(product_url)
+                        
+                        # Safety net: ensure we stay on the same domain (prevents extracting cookie banner links etc)
+                        try:
+                            source_domain = urlparse(source.get('base_url', url)).netloc.replace('www.', '')
+                            product_domain = urlparse(product_url).netloc.replace('www.', '')
+                            if product_domain and source_domain and product_domain != source_domain:
+                                continue
+                        except Exception:
+                            pass
+                            
+                        await self.product_queue.put((product_url, source))
                         added += 1
                         
                 logger.debug(f"[CATEGORY] {url[:60]} -> Found {len(product_links)} products, queued {added}")
@@ -132,13 +163,19 @@ class NativeFastPipeline:
         """Worker that grabs product pages, extracts data, and saves."""
         while not self.target_reached_event.is_set():
             try:
-                url = await asyncio.wait_for(self.product_queue.get(), timeout=1.0)
+                queue_item = await asyncio.wait_for(self.product_queue.get(), timeout=1.0)
+                if isinstance(queue_item, tuple):
+                    url, source = queue_item
+                else:
+                    url = queue_item
+                    source = self._find_source(url) or {}
+                    
+                if self.target_reached_event.is_set():
+                    self.product_queue.task_done()
+                    break
+
             except asyncio.TimeoutError:
                 continue
-
-            if self.target_reached_event.is_set():
-                self.product_queue.task_done()
-                break
 
             try:
                 # Basic product page test to avoid downloading rubbish
@@ -160,9 +197,12 @@ class NativeFastPipeline:
                 
                 try:
                     if is_stealth:
-                        response = await self.stealth_session.fetch(url, network_idle=True)
+                        response = await asyncio.wait_for(self.stealth_session.fetch(url), timeout=30.0)
                     else:
-                        response = await fetcher.get(url)
+                        response = await asyncio.wait_for(fetcher.get(url), timeout=30.0)
+                except asyncio.TimeoutError:
+                    logger.warning(f"[SKIP] Network Timeout (30s) on {url[:60]}")
+                    continue
                 except Exception as e:
                     logger.warning(f"[SKIP] Network error on {url[:60]}: {str(e)}")
                     continue
@@ -196,19 +236,25 @@ class NativeFastPipeline:
                 # lives only inside a <script type="application/ld+json"> tag.
                 ld_price_found = None
                 ld_currency = 'USD'  # default
-                for ld_block in re.finditer(r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>', raw_html, re.IGNORECASE | re.DOTALL):
-                    try:
-                        ld_data = _json.loads(ld_block.group(1))
-                        offers = ld_data.get('offers', {})
-                        if isinstance(offers, list):
-                            offers = offers[0] if offers else {}
-                        if 'price' in offers:
-                            ld_price_found = str(offers['price'])
-                            ld_currency = offers.get('priceCurrency', 'USD').upper()
-                            extracted_parts.append(f"PRICE: {ld_price_found} {ld_currency}")
-                            break
-                    except Exception:
-                        pass
+                
+                # Skip JSON-LD price checking for auction sites because their JSON schema usually
+                # just contains a useless $10 "Starting Bid" which overrides our Estimate/Hammer Price.
+                is_auction = url and any(x in url.lower() for x in ['liveauctioneers.com', 'bonhams.com'])
+                
+                if not is_auction:
+                    for ld_block in re.finditer(r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>', raw_html, re.IGNORECASE | re.DOTALL):
+                        try:
+                            ld_data = _json.loads(ld_block.group(1))
+                            offers = ld_data.get('offers', {})
+                            if isinstance(offers, list):
+                                offers = offers[0] if offers else {}
+                            if 'price' in offers:
+                                ld_price_found = str(offers['price'])
+                                ld_currency = offers.get('priceCurrency', 'USD').upper()
+                                extracted_parts.append(f"PRICE: {ld_price_found} {ld_currency}")
+                                break
+                        except Exception:
+                            pass
 
                 clean_html = re.sub(r'<(script|style)[^>]*>.*?</\1>', ' ', raw_html, flags=re.IGNORECASE | re.DOTALL)
                 raw_text = re.sub(r'\s+', ' ', re.sub(r'<[^>]*>', ' ', clean_html)).strip()
@@ -264,16 +310,23 @@ class NativeFastPipeline:
                     extracted_parts = [f"PAGE TEXT:\n{raw_text[:5000]}"]
 
                 content_for_llm = f"SOURCE URL: {url}\n\n" + "\n".join(extracted_parts)
+                
+                # Token Saver: If this is an auction, only call LLM if there's evidence of an Estimate or Winning Bid.
+                # This prevents burning 1,500 tokens on junk items that will just fail validation anyway.
+                if is_auction:
+                    lower_content = content_for_llm.lower()
+                    if not any(k in lower_content for k in ['estimate', 'winning bid', 'hammer price', 'sold for', 'price realized', 'bidding closed']):
+                        logger.debug(f"[SKIP] No auction price markers found, saving tokens: {url[:60]}")
+                        self._record_failure('no_price')
+                        continue
 
                 # LLM Extraction
-                # Rate limit safety: decouple extraction from download burst
+                # Leverage all 12 API keys concurrently; the key-rotator will handle any 429 Rate Limits automatically.
                 async with self.llm_semaphore:
                     # Run synchronous LLM extraction in thread pool
                     product_data = await asyncio.to_thread(
                         self._extractor.extract, content_for_llm, url
                     )
-                    # For Llama 4 Scout (30K TPM): Strictly 3.0s sleep equals ~20 req/min (~28K Tokens). 
-                    await asyncio.sleep(3.0)
                 # Validation
                 is_valid, error_msg, confidence = self._validator.validate(product_data)
                 if not is_valid:
@@ -309,7 +362,14 @@ class NativeFastPipeline:
                         logger.warning(f"LD price override failed: {_e}")
                 # ------------------------------------
 
-
+                # --- DETERMINISTIC LIMITED EDITION OVERRIDE ---
+                # High-value items (near/over 1 Crore INR) or URLs explicitly mentioning scarcity
+                if product_data.current_market_price and product_data.current_market_price >= 9000000:
+                    product_data.limited_edition = True
+                elif url and any(word in url.lower() for word in ['limited-edition', '/rare-', '-rare-', 'one-of-a-kind', '1-of-1']):
+                    product_data.limited_edition = True
+                # ----------------------------------------------
+                
                 # Storage 
                 row_id = self._database.insert(product_data, url, confidence)
                 if not row_id:
@@ -393,9 +453,24 @@ def run_spider_pipeline():
     logger.info("=" * 60)
     
     seed_config = settings.load_seed_urls()
+    sources = seed_config.get('sources', [])
     
+    # Auto-Discover Dynamic Sites (Bonhams)
+    # Disabled by request to focus exclusively on LiveAuctioneers bulk extraction.
+    # from src.discovery.bonhams_discovery import discover_bonhams_auctions
+    # import asyncio
+    # 
+    # try:
+    #     logger.info("Running pre-flight auto-discovery checks...")
+    #     bonhams_seeds = asyncio.run(discover_bonhams_auctions())
+    #     if bonhams_seeds:
+    #         sources.extend(bonhams_seeds)
+    #         logger.info(f"Injecting {len(bonhams_seeds)} dynamic seeds into pipeline.")
+    # except Exception as e:
+    #     logger.error(f"Auto-discovery failed: {str(e)}")
+
     pipeline = NativeFastPipeline(
-        sources=seed_config.get('sources', []),
+        sources=sources,
     )
     
     asyncio.run(pipeline.run())

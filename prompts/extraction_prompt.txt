@@ -8,6 +8,7 @@ PRICE EXTRACTION RULES (most important):
 - If you cannot find ANY price in the text, return current_market_price = 0 (do NOT refuse).
 - Output the raw number as `current_market_price` and the currency code as `detected_currency`.
 - NEVER use a shipping threshold (e.g. "free shipping over $X") as the price.
+- AUCTIONS: If "Winning Bid" or "Hammer Price" is listed, extract that. If only "Estimate" is available, extract the HIGHER number of the estimate range.
 
 FIELD EXTRACTION RULES — be aggressive, extract every possible field:
 
@@ -79,12 +80,12 @@ work_type:
   - Most luxury brands (Hermès, Chanel, Gucci) use a mix — use "Machine work" unless handmade is stated.
 
 brand:
-  - The luxury brand or artisan creator. Extract exactly as written on the page.
-  - Examples: "Hermès", "Louis Vuitton", "Chanel", "Gucci", "Prada", "Baccarat", "Tiffany & Co.", "David Yurman".
-  - Use null only if truly no brand is identifiable.
+  - The maker or designer. 
+  - If unknown, return "N/A".
 
 limited_edition:
-  - true ONLY if explicitly described as: "limited edition", "rare", "one-of-a-kind", "collectible", "numbered", "special edition", "exclusive", "vintage 1-of-1".
+  - true ONLY if explicitly described as: "limited edition", "rare", "one-of-a-kind", "collectible", "numbered", "special edition", "exclusive", "vintage 1-of-1", OR if it is a unique antique or original fine art piece.
+  - true if the item is inherently scarce or high-value unique (e.g. 1stDibs one-off items).
   - false by default.
 
 OUTPUT FORMAT — return exactly this JSON and nothing else:
